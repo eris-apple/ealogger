@@ -39,6 +39,15 @@ type DefaultLogger interface {
 	Panic(v ...interface{})
 }
 
+type LoggerFileConfig struct {
+	Filename   string
+	MaxSize    int
+	MaxBackups int
+	MaxAge     int
+	LocalTime  bool
+	Compress   bool
+}
+
 type Logger struct {
 	DefaultLogger
 	Mode          Mode
@@ -111,7 +120,7 @@ func (l *Logger) FatalT(trace string, v ...interface{}) {
 
 func (l *Logger) Panic(v ...interface{}) {
 	l.consoleLogger.Error(l.format(v...))
-	l.fileLogger.Error(l.format(v...))
+	l.fileLogger.Panic(l.format(v...))
 }
 
 func (l *Logger) PanicT(trace string, v ...interface{}) {
@@ -155,23 +164,25 @@ func (l *Logger) formatT(isFile bool, trace string, v ...interface{}) string {
 	return fmt.Sprintf("%s%s%s: %s", Cyan, trace, Reset, str)
 }
 
-func NewDefaultLogger(mode string) *Logger {
+func NewDefaultLogger(mode string, config *LoggerFileConfig) *Logger {
 	level := zap.InfoLevel
 	if mode == DebugMode {
 		level = zap.DebugLevel
 	}
 
+	config = setDefaultLoggerConfig(config)
+
 	pe := zap.NewProductionEncoderConfig()
-	fileEncoder := zapcore.NewJSONEncoder(pe)
 	pe.EncodeTime = zapcore.ISO8601TimeEncoder
+	fileEncoder := zapcore.NewJSONEncoder(pe)
 
 	ioWriter := &lumberjack.Logger{
-		Filename:   "logs/logs.log",
-		MaxSize:    10,
-		MaxBackups: 3,
-		MaxAge:     28,
-		LocalTime:  true,
-		Compress:   false,
+		Filename:   config.Filename,
+		MaxSize:    config.MaxSize,
+		MaxBackups: config.MaxBackups,
+		MaxAge:     config.MaxAge,
+		LocalTime:  config.LocalTime,
+		Compress:   config.Compress,
 	}
 
 	core := zapcore.NewCore(fileEncoder, zapcore.AddSync(ioWriter), level)
@@ -199,4 +210,28 @@ func NewDefaultLogger(mode string) *Logger {
 		fileLogger:    fileLogger,
 		consoleLogger: logger,
 	}
+}
+
+func setDefaultLoggerConfig(config *LoggerFileConfig) *LoggerFileConfig {
+	if config == nil {
+		config = &LoggerFileConfig{}
+	}
+
+	if config.Filename == "" {
+		config.Filename = "logs/logs.log"
+	}
+	if config.MaxSize == 0 {
+		config.MaxSize = 10
+	}
+	if config.MaxBackups == 0 {
+		config.MaxBackups = 3
+	}
+	if config.MaxAge == 0 {
+		config.MaxAge = 28
+	}
+
+	config.LocalTime = config.LocalTime || true
+	config.Compress = config.Compress || false
+
+	return config
 }
