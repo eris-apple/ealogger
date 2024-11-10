@@ -11,11 +11,11 @@ import (
 	"testing"
 )
 
-func captureConsoleLogger(consoleLevel zapcore.Level) *log.Logger {
+func captureConsoleLogger(ConsoleLevel zapcore.Level) *log.Logger {
 	buffer := new(bytes.Buffer)
 	logger := log.NewWithOptions(buffer, log.Options{
 		ReportTimestamp: false,
-		Level:           log.Level(consoleLevel),
+		Level:           log.Level(ConsoleLevel),
 	})
 	return logger
 }
@@ -40,10 +40,10 @@ func TestLogger_InfoMethods(t *testing.T) {
 		fileLogger:    fileLogger,
 		consoleLogger: consoleLogger,
 		c: &LoggerConfig{
-			useConsole:   true,
-			useFile:      true,
-			consoleLevel: zapcore.InfoLevel,
-			fileLevel:    zapcore.InfoLevel,
+			UseConsole:   true,
+			UseFile:      true,
+			ConsoleLevel: zapcore.InfoLevel,
+			FileLevel:    zapcore.InfoLevel,
 		},
 	}
 
@@ -69,10 +69,10 @@ func TestLogger_DebugMethods(t *testing.T) {
 		fileLogger:    fileLogger,
 		consoleLogger: consoleLogger,
 		c: &LoggerConfig{
-			useConsole:   true,
-			useFile:      true,
-			consoleLevel: zapcore.DebugLevel,
-			fileLevel:    zapcore.DebugLevel,
+			UseConsole:   true,
+			UseFile:      true,
+			ConsoleLevel: zapcore.DebugLevel,
+			FileLevel:    zapcore.DebugLevel,
 		},
 	}
 
@@ -98,10 +98,10 @@ func TestLogger_ErrorMethods(t *testing.T) {
 		fileLogger:    fileLogger,
 		consoleLogger: consoleLogger,
 		c: &LoggerConfig{
-			useConsole:   true,
-			useFile:      true,
-			consoleLevel: zapcore.ErrorLevel,
-			fileLevel:    zapcore.ErrorLevel,
+			UseConsole:   true,
+			UseFile:      true,
+			ConsoleLevel: zapcore.ErrorLevel,
+			FileLevel:    zapcore.ErrorLevel,
 		},
 	}
 
@@ -127,10 +127,10 @@ func TestLogger_FatalMethods(t *testing.T) {
 		fileLogger:    fileLogger,
 		consoleLogger: consoleLogger,
 		c: &LoggerConfig{
-			useConsole:   true,
-			useFile:      true,
-			consoleLevel: zapcore.FatalLevel,
-			fileLevel:    zapcore.FatalLevel,
+			UseConsole:   true,
+			UseFile:      true,
+			ConsoleLevel: zapcore.FatalLevel,
+			FileLevel:    zapcore.FatalLevel,
 		},
 	}
 
@@ -156,10 +156,10 @@ func TestLogger_PanicMethods(t *testing.T) {
 		fileLogger:    fileLogger,
 		consoleLogger: consoleLogger,
 		c: &LoggerConfig{
-			useConsole:   true,
-			useFile:      true,
-			consoleLevel: zapcore.PanicLevel,
-			fileLevel:    zapcore.PanicLevel,
+			UseConsole:   true,
+			UseFile:      true,
+			ConsoleLevel: zapcore.PanicLevel,
+			FileLevel:    zapcore.PanicLevel,
 		},
 	}
 
@@ -181,10 +181,10 @@ func TestLogger_PanicMethods(t *testing.T) {
 func TestLoggerWithMode(t *testing.T) {
 	logger := NewLoggerWithMode(DebugMode)
 
-	if logger.c.consoleLevel != zapcore.DebugLevel {
-		t.Errorf("Expected console level to be DebugLevel, got %v", logger.c.consoleLevel)
+	if logger.c.ConsoleLevel != zapcore.DebugLevel {
+		t.Errorf("Expected console level to be DebugLevel, got %v", logger.c.ConsoleLevel)
 	}
-	if logger.c.fileLevel != zapcore.InfoLevel {
-		t.Errorf("Expected file level to be InfoLevel, got %v", logger.c.fileLevel)
+	if logger.c.FileLevel != zapcore.InfoLevel {
+		t.Errorf("Expected file level to be InfoLevel, got %v", logger.c.FileLevel)
 	}
 }

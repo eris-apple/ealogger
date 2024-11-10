@@ -11,6 +11,18 @@ import (
 	"time"
 )
 
+const (
+	Reset   = "\033[0m"
+	Red     = "\033[31m"
+	Green   = "\033[32m"
+	Yellow  = "\033[33m"
+	Blue    = "\033[34m"
+	Magenta = "\033[35m"
+	Cyan    = "\033[36m"
+	Gray    = "\033[37m"
+	White   = "\033[97m"
+)
+
 type Level = zapcore.Level
 type Mode = string
 
@@ -60,7 +72,7 @@ func (l *Logger) logToConsole(level Level, trace string, msg string) {
 
 	if l.c.ConsoleLevel.Enabled(level) {
 		if trace != "" {
-			trace = fmt.Sprintf("%s%s%s: ", lipgloss.Color("#36C"), trace, lipgloss.Color("#dedede"))
+			trace = fmt.Sprintf("%s%s%s: %s", Cyan, trace, Reset, msg)
 		}
 		l.consoleLogger.Info(trace + msg)
 	}
