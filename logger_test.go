@@ -2,118 +2,189 @@ package ealogger
 
 import (
 	"bytes"
-	"testing"
-	"time"
-
+	"fmt"
 	"github.com/charmbracelet/log"
-	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+	"go.uber.org/zap/zaptest/observer"
+	"os"
+	"testing"
 )
 
-func TestNewDefaultLogger_WithDefaults(t *testing.T) {
-	logger := NewDefaultLogger(ProdMode, nil)
-
-	assert.Equal(t, ProdMode, logger.Mode)
-	assert.NotNil(t, logger)
-	assert.NotNil(t, logger.fileLogger)
-	assert.NotNil(t, logger.consoleLogger)
-}
-
-func TestNewDefaultLogger_WithConfig(t *testing.T) {
-	config := &LoggerFileConfig{
-		Filename:   "test.log",
-		MaxSize:    5,
-		MaxBackups: 1,
-		MaxAge:     7,
-		LocalTime:  true,
-		Compress:   true,
-	}
-
-	logger := NewDefaultLogger(DebugMode, config)
-
-	assert.Equal(t, DebugMode, logger.Mode)
-	assert.Equal(t, "test.log", config.Filename)
-	assert.Equal(t, 5, config.MaxSize)
-	assert.Equal(t, 1, config.MaxBackups)
-	assert.Equal(t, 7, config.MaxAge)
-	assert.True(t, config.LocalTime)
-	assert.True(t, config.Compress)
-}
-
-func TestLoggerLevels(t *testing.T) {
-	var buf bytes.Buffer
-	consoleLogger := log.NewWithOptions(&buf, log.Options{
-		ReportTimestamp: true,
-		TimeFormat:      time.RFC3339,
-		Level:           log.DebugLevel,
+func captureConsoleLogger(consoleLevel zapcore.Level) *log.Logger {
+	buffer := new(bytes.Buffer)
+	logger := log.NewWithOptions(buffer, log.Options{
+		ReportTimestamp: false,
+		Level:           log.Level(consoleLevel),
 	})
+	return logger
+}
 
-	fileLogger, _ := zap.NewDevelopment()
+func setupObservedLogger(level zapcore.Level) (*zap.Logger, *observer.ObservedLogs) {
+	core := zapcore.NewCore(
+		zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
+		os.Stdout,
+		level,
+	)
+
+	observed, logs := observer.New(zapcore.InfoLevel)
+	logger := zap.New(zapcore.NewTee(core, observed))
+
+	return logger, logs
+}
+
+func TestLogger_InfoMethods(t *testing.T) {
+	consoleLogger := captureConsoleLogger(zapcore.InfoLevel)
+	fileLogger, observedLogs := setupObservedLogger(zapcore.InfoLevel)
 	logger := &Logger{
-		Mode:          DevMode,
 		fileLogger:    fileLogger,
 		consoleLogger: consoleLogger,
+		c: &LoggerConfig{
+			useConsole:   true,
+			useFile:      true,
+			consoleLevel: zapcore.InfoLevel,
+			fileLevel:    zapcore.InfoLevel,
+		},
 	}
 
-	logger.Debug("This is a debug message")
-	logger.Info("This is an info message")
-	logger.Warn("This is a warn message")
-	logger.Error("This is an error message")
+	logger.Info("Test info message")
+	if len(observedLogs.All()) != 1 {
+		t.Errorf("Expected 1 log entry, got %d", len(observedLogs.All()))
+	}
+	if observedLogs.All()[0].Message != "Test info message" {
+		t.Errorf("Expected 'Test info message', got %s", observedLogs.All()[0].Message)
+	}
 
-	logOutput := buf.String()
-	assert.Contains(t, logOutput, "This is a debug message")
-	assert.Contains(t, logOutput, "This is an info message")
-	assert.Contains(t, logOutput, "This is a warn message")
-	assert.Contains(t, logOutput, "This is an error message")
+	traceMsg := "TRACE-INFO"
+	logger.InfoT(traceMsg, "Test info trace message")
+	if observedLogs.All()[1].Message != fmt.Sprintf("%s: Test info trace message", traceMsg) {
+		t.Errorf("Expected 'TRACE-INFO: Test info trace message', got %s", observedLogs.All()[1].Message)
+	}
 }
 
-func TestLoggerFormatMethods(t *testing.T) {
-	logger := NewDefaultLogger(DevMode, nil)
-	trace := "TRACE_ID"
-	msg := "test message"
-
-	formatted := logger.format(msg)
-	assert.Equal(t, "test message", formatted)
-
-	formattedTrace := logger.formatT(false, trace, msg)
-	expected := "\033[36mTRACE_ID\033[0m: test message"
-	assert.Equal(t, expected, formattedTrace)
-}
-
-func TestSetDefaultLoggerConfig(t *testing.T) {
-	config := LoggerFileConfig{}
-	defaultConfig := setDefaultLoggerConfig(&config)
-
-	assert.Equal(t, "logs/logs.log", defaultConfig.Filename)
-	assert.Equal(t, 10, defaultConfig.MaxSize)
-	assert.Equal(t, 3, defaultConfig.MaxBackups)
-	assert.Equal(t, 28, defaultConfig.MaxAge)
-	assert.True(t, defaultConfig.LocalTime)
-	assert.False(t, defaultConfig.Compress)
-}
-
-func TestLoggerFatalAndPanic(t *testing.T) {
-	var buf bytes.Buffer
-	consoleLogger := log.NewWithOptions(&buf, log.Options{
-		ReportTimestamp: true,
-		TimeFormat:      time.RFC3339,
-		Level:           log.DebugLevel,
-	})
-	fileLogger, _ := zap.NewDevelopment()
-
+func TestLogger_DebugMethods(t *testing.T) {
+	consoleLogger := captureConsoleLogger(zapcore.DebugLevel)
+	fileLogger, observedLogs := setupObservedLogger(zapcore.DebugLevel)
 	logger := &Logger{
-		Mode:          DevMode,
 		fileLogger:    fileLogger,
 		consoleLogger: consoleLogger,
+		c: &LoggerConfig{
+			useConsole:   true,
+			useFile:      true,
+			consoleLevel: zapcore.DebugLevel,
+			fileLevel:    zapcore.DebugLevel,
+		},
 	}
 
-	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("Expected panic, but got none")
-		}
-	}()
+	logger.Debug("Test debug message")
+	if len(observedLogs.All()) != 1 {
+		t.Errorf("Expected 1 log entry, got %d", len(observedLogs.All()))
+	}
+	if observedLogs.All()[0].Message != "Test debug message" {
+		t.Errorf("Expected 'Test debug message', got %s", observedLogs.All()[0].Message)
+	}
 
-	logger.Panic("This is a panic message")
-	logOutput := buf.String()
-	assert.Contains(t, logOutput, "This is a panic message")
+	traceMsg := "TRACE-DEBUG"
+	logger.DebugT(traceMsg, "Test debug trace message")
+	if observedLogs.All()[1].Message != fmt.Sprintf("%s: Test debug trace message", traceMsg) {
+		t.Errorf("Expected 'TRACE-DEBUG: Test debug trace message', got %s", observedLogs.All()[1].Message)
+	}
+}
+
+func TestLogger_ErrorMethods(t *testing.T) {
+	consoleLogger := captureConsoleLogger(zapcore.ErrorLevel)
+	fileLogger, observedLogs := setupObservedLogger(zapcore.ErrorLevel)
+	logger := &Logger{
+		fileLogger:    fileLogger,
+		consoleLogger: consoleLogger,
+		c: &LoggerConfig{
+			useConsole:   true,
+			useFile:      true,
+			consoleLevel: zapcore.ErrorLevel,
+			fileLevel:    zapcore.ErrorLevel,
+		},
+	}
+
+	logger.Error("Test error message")
+	if len(observedLogs.All()) != 1 {
+		t.Errorf("Expected 1 log entry, got %d", len(observedLogs.All()))
+	}
+	if observedLogs.All()[0].Message != "Test error message" {
+		t.Errorf("Expected 'Test error message', got %s", observedLogs.All()[0].Message)
+	}
+
+	traceMsg := "TRACE-ERROR"
+	logger.ErrorT(traceMsg, "Test error trace message")
+	if observedLogs.All()[1].Message != fmt.Sprintf("%s: Test error trace message", traceMsg) {
+		t.Errorf("Expected 'TRACE-ERROR: Test error trace message', got %s", observedLogs.All()[1].Message)
+	}
+}
+
+func TestLogger_FatalMethods(t *testing.T) {
+	consoleLogger := captureConsoleLogger(zapcore.FatalLevel)
+	fileLogger, observedLogs := setupObservedLogger(zapcore.FatalLevel)
+	logger := &Logger{
+		fileLogger:    fileLogger,
+		consoleLogger: consoleLogger,
+		c: &LoggerConfig{
+			useConsole:   true,
+			useFile:      true,
+			consoleLevel: zapcore.FatalLevel,
+			fileLevel:    zapcore.FatalLevel,
+		},
+	}
+
+	logger.Fatal("Test fatal message")
+	if len(observedLogs.All()) != 1 {
+		t.Errorf("Expected 1 log entry, got %d", len(observedLogs.All()))
+	}
+	if observedLogs.All()[0].Message != "Test fatal message" {
+		t.Errorf("Expected 'Test fatal message', got %s", observedLogs.All()[0].Message)
+	}
+
+	traceMsg := "TRACE-FATAL"
+	logger.FatalT(traceMsg, "Test fatal trace message")
+	if observedLogs.All()[1].Message != fmt.Sprintf("%s: Test fatal trace message", traceMsg) {
+		t.Errorf("Expected 'TRACE-FATAL: Test fatal trace message', got %s", observedLogs.All()[1].Message)
+	}
+}
+
+func TestLogger_PanicMethods(t *testing.T) {
+	consoleLogger := captureConsoleLogger(zapcore.PanicLevel)
+	fileLogger, observedLogs := setupObservedLogger(zapcore.PanicLevel)
+	logger := &Logger{
+		fileLogger:    fileLogger,
+		consoleLogger: consoleLogger,
+		c: &LoggerConfig{
+			useConsole:   true,
+			useFile:      true,
+			consoleLevel: zapcore.PanicLevel,
+			fileLevel:    zapcore.PanicLevel,
+		},
+	}
+
+	logger.Panic("Test panic message")
+	if len(observedLogs.All()) != 1 {
+		t.Errorf("Expected 1 log entry, got %d", len(observedLogs.All()))
+	}
+	if observedLogs.All()[0].Message != "Test panic message" {
+		t.Errorf("Expected 'Test panic message', got %s", observedLogs.All()[0].Message)
+	}
+
+	traceMsg := "TRACE-PANIC"
+	logger.PanicT(traceMsg, "Test panic trace message")
+	if observedLogs.All()[1].Message != fmt.Sprintf("%s: Test panic trace message", traceMsg) {
+		t.Errorf("Expected 'TRACE-PANIC: Test panic trace message', got %s", observedLogs.All()[1].Message)
+	}
+}
+
+func TestLoggerWithMode(t *testing.T) {
+	logger := NewLoggerWithMode(DebugMode)
+
+	if logger.c.consoleLevel != zapcore.DebugLevel {
+		t.Errorf("Expected console level to be DebugLevel, got %v", logger.c.consoleLevel)
+	}
+	if logger.c.fileLevel != zapcore.InfoLevel {
+		t.Errorf("Expected file level to be InfoLevel, got %v", logger.c.fileLevel)
+	}
 }
