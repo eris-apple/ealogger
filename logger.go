@@ -48,17 +48,17 @@ type Logger struct {
 }
 
 type LoggerConfig struct {
-	useConsole, useFile     bool
-	consoleLevel, fileLevel Level
-	ljLogger                *lumberjack.Logger
+	UseConsole, UseFile     bool
+	ConsoleLevel, FileLevel Level
+	LJLogger                *lumberjack.Logger
 }
 
 func (l *Logger) logToConsole(level Level, trace string, msg string) {
-	if !l.c.useConsole {
+	if !l.c.UseConsole {
 		return
 	}
 
-	if l.c.consoleLevel.Enabled(level) {
+	if l.c.ConsoleLevel.Enabled(level) {
 		if trace != "" {
 			trace = fmt.Sprintf("%s%s%s: ", lipgloss.Color("#36C"), trace, lipgloss.Color("#dedede"))
 		}
@@ -67,11 +67,11 @@ func (l *Logger) logToConsole(level Level, trace string, msg string) {
 }
 
 func (l *Logger) logToFile(level Level, trace string, msg string) {
-	if !l.c.useFile {
+	if !l.c.UseFile {
 		return
 	}
 
-	if l.c.fileLevel.Enabled(level) {
+	if l.c.FileLevel.Enabled(level) {
 		if trace != "" {
 			msg = fmt.Sprintf("%s: %s", trace, msg)
 		}
@@ -160,8 +160,8 @@ func NewLogger(lc *LoggerConfig) *Logger {
 		lc = setupDefaultConfig(DevMode)
 	}
 
-	consoleLogger := setupConsoleLogger(lc.consoleLevel)
-	fileLogger := setupFileLogger(lc.fileLevel, lc.ljLogger)
+	consoleLogger := setupConsoleLogger(lc.ConsoleLevel)
+	fileLogger := setupFileLogger(lc.FileLevel, lc.LJLogger)
 
 	return &Logger{
 		fileLogger:    fileLogger,
@@ -186,13 +186,13 @@ func setupDefaultConfig(mode Mode) *LoggerConfig {
 	}
 
 	return &LoggerConfig{
-		consoleLevel: consoleLevel,
-		fileLevel:    fileLevel,
+		ConsoleLevel: consoleLevel,
+		FileLevel:    fileLevel,
 
-		useConsole: true,
-		useFile:    true,
+		UseConsole: true,
+		UseFile:    true,
 
-		ljLogger: &lumberjack.Logger{
+		LJLogger: &lumberjack.Logger{
 			Filename:   "logs/logs.log",
 			MaxSize:    10,
 			MaxBackups: 3,
@@ -222,12 +222,12 @@ func setupConsoleLogger(level Level) *log.Logger {
 	return logger
 }
 
-func setupFileLogger(level Level, ljLogger *lumberjack.Logger) *zap.Logger {
+func setupFileLogger(level Level, LJLogger *lumberjack.Logger) *zap.Logger {
 	pe := zap.NewProductionEncoderConfig()
 	pe.EncodeTime = zapcore.ISO8601TimeEncoder
 	fileEncoder := zapcore.NewJSONEncoder(pe)
 
-	ioWriter := ljLogger
+	ioWriter := LJLogger
 	core := zapcore.NewCore(fileEncoder, zapcore.AddSync(ioWriter), level)
 	return zap.New(core)
 }
