@@ -20,6 +20,8 @@ const (
 )
 
 type DefaultLogger interface {
+	Print(v ...interface{})
+	Printf(v ...interface{})
 	Info(v ...interface{})
 	Debug(v ...interface{})
 	Warn(v ...interface{})
@@ -75,6 +77,8 @@ func (l *Logger) logToConsole(level Level, trace string, msg string) {
 			l.consoleLogger.Fatal(trace + msg)
 		case PanicLevel.String():
 			l.consoleLogger.Fatal(trace + msg)
+		case UnselectedLevel.String():
+			l.consoleLogger.Print(trace + msg)
 		default:
 			l.consoleLogger.Info(trace + msg)
 		}
@@ -104,10 +108,24 @@ func (l *Logger) logToFile(level Level, trace string, msg string) {
 			l.fileLogger.Fatal(trace + msg)
 		case PanicLevel.String():
 			l.fileLogger.Panic(trace + msg)
+		case UnselectedLevel.String():
+			l.fileLogger.Info(trace + msg)
 		default:
 			l.fileLogger.Info(trace + msg)
 		}
 	}
+}
+
+func (l *Logger) Print(v ...interface{}) {
+	message := fmt.Sprint(v...)
+	l.logToConsole(UnselectedLevel, "", message)
+	l.logToFile(UnselectedLevel, "", message)
+}
+
+func (l *Logger) Printf(format string, v ...interface{}) {
+	message := fmt.Sprintf(format, v...)
+	l.logToConsole(UnselectedLevel, "", message)
+	l.logToFile(UnselectedLevel, "", message)
 }
 
 func (l *Logger) Info(v ...interface{}) {

@@ -3,17 +3,19 @@ package ealogger
 import (
 	"github.com/charmbracelet/log"
 	"go.uber.org/zap/zapcore"
+	"math"
 )
 
 type Level int32
 
 const (
-	DebugLevel Level = iota - 1
+	DebugLevel Level = iota - 2
 	InfoLevel
 	WarnLevel
 	ErrorLevel
 	FatalLevel
 	PanicLevel
+	UnselectedLevel
 )
 
 func (l Level) IsEnabled(level Level) bool {
@@ -35,6 +37,8 @@ func (l Level) String() string {
 		return "fatal"
 	case PanicLevel:
 		return "panic"
+	case UnselectedLevel:
+		return "unselected"
 	default:
 		return ""
 	}
@@ -54,6 +58,8 @@ func (l Level) toZap() zapcore.Level {
 		return zapcore.FatalLevel
 	case PanicLevel:
 		return zapcore.PanicLevel
+	case UnselectedLevel:
+		return zapcore.InfoLevel
 	default:
 		return zapcore.InfoLevel
 	}
@@ -73,6 +79,8 @@ func (l Level) toCharmbracelet() log.Level {
 		return log.FatalLevel
 	case PanicLevel:
 		return log.FatalLevel
+	case UnselectedLevel:
+		return math.MaxInt32
 	default:
 		return log.InfoLevel
 	}
