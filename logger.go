@@ -11,19 +11,6 @@ import (
 	"time"
 )
 
-const (
-	Reset   = "\033[0m"
-	Red     = "\033[31m"
-	Green   = "\033[32m"
-	Yellow  = "\033[33m"
-	Blue    = "\033[34m"
-	Magenta = "\033[35m"
-	Cyan    = "\033[36m"
-	Gray    = "\033[37m"
-	White   = "\033[97m"
-)
-
-type Level = zapcore.Level
 type Mode = string
 
 const (
@@ -70,11 +57,27 @@ func (l *Logger) logToConsole(level Level, trace string, msg string) {
 		return
 	}
 
-	if l.c.ConsoleLevel.Enabled(level) {
+	if l.c.ConsoleLevel.IsEnabled(level) {
 		if trace != "" {
-			trace = fmt.Sprintf("%s%s%s: %s", Cyan, trace, Reset, msg)
+			trace = fmt.Sprintf("%s%s%s: ", Cyan, trace, Reset)
 		}
-		l.consoleLogger.Info(trace + msg)
+
+		switch level.String() {
+		case DebugLevel.String():
+			l.consoleLogger.Debug(trace + msg)
+		case InfoLevel.String():
+			l.consoleLogger.Info(trace + msg)
+		case WarnLevel.String():
+			l.consoleLogger.Warn(trace + msg)
+		case ErrorLevel.String():
+			l.consoleLogger.Error(trace + msg)
+		case FatalLevel.String():
+			l.consoleLogger.Fatal(trace + msg)
+		case PanicLevel.String():
+			l.consoleLogger.Fatal(trace + msg)
+		default:
+			l.consoleLogger.Info(trace + msg)
+		}
 	}
 }
 
@@ -83,84 +86,108 @@ func (l *Logger) logToFile(level Level, trace string, msg string) {
 		return
 	}
 
-	if l.c.FileLevel.Enabled(level) {
+	if l.c.FileLevel.IsEnabled(level) {
 		if trace != "" {
-			msg = fmt.Sprintf("%s: %s", trace, msg)
+			trace = fmt.Sprintf("%s: ", trace)
 		}
-		l.fileLogger.Info(msg)
+
+		switch level.String() {
+		case DebugLevel.String():
+			l.fileLogger.Debug(trace + msg)
+		case InfoLevel.String():
+			l.fileLogger.Info(trace + msg)
+		case WarnLevel.String():
+			l.fileLogger.Warn(trace + msg)
+		case ErrorLevel.String():
+			l.fileLogger.Error(trace + msg)
+		case FatalLevel.String():
+			l.fileLogger.Fatal(trace + msg)
+		case PanicLevel.String():
+			l.fileLogger.Panic(trace + msg)
+		default:
+			l.fileLogger.Info(trace + msg)
+		}
 	}
 }
 
 func (l *Logger) Info(v ...interface{}) {
 	message := fmt.Sprint(v...)
-	l.logToConsole(zapcore.InfoLevel, "", message)
-	l.logToFile(zapcore.InfoLevel, "", message)
+	l.logToConsole(InfoLevel, "", message)
+	l.logToFile(InfoLevel, "", message)
 }
 
 func (l *Logger) InfoT(trace string, v ...interface{}) {
 	message := fmt.Sprint(v...)
-	l.logToConsole(zapcore.InfoLevel, trace, message)
-	l.logToFile(zapcore.InfoLevel, trace, message)
+	l.logToConsole(InfoLevel, trace, message)
+	l.logToFile(InfoLevel, trace, message)
 }
 
 func (l *Logger) Debug(v ...interface{}) {
 	message := fmt.Sprint(v...)
-	l.logToConsole(zapcore.DebugLevel, "", message)
-	l.logToFile(zapcore.DebugLevel, "", message)
+	l.logToConsole(DebugLevel, "", message)
+	l.logToFile(DebugLevel, "", message)
 }
 
 func (l *Logger) DebugT(trace string, v ...interface{}) {
 	message := fmt.Sprint(v...)
-	l.logToConsole(zapcore.DebugLevel, trace, message)
-	l.logToFile(zapcore.DebugLevel, trace, message)
+	l.logToConsole(DebugLevel, trace, message)
+	l.logToFile(DebugLevel, trace, message)
 }
 
 func (l *Logger) Warn(v ...interface{}) {
 	message := fmt.Sprint(v...)
-	l.logToConsole(zapcore.WarnLevel, "", message)
-	l.logToFile(zapcore.WarnLevel, "", message)
+	l.logToConsole(WarnLevel, "", message)
+	l.logToFile(WarnLevel, "", message)
 }
 
 func (l *Logger) WarnT(trace string, v ...interface{}) {
 	message := fmt.Sprint(v...)
-	l.logToConsole(zapcore.WarnLevel, trace, message)
-	l.logToFile(zapcore.WarnLevel, trace, message)
+	l.logToConsole(WarnLevel, trace, message)
+	l.logToFile(WarnLevel, trace, message)
 }
 
 func (l *Logger) Error(v ...interface{}) {
 	message := fmt.Sprint(v...)
-	l.logToConsole(zapcore.ErrorLevel, "", message)
-	l.logToFile(zapcore.ErrorLevel, "", message)
+	l.logToConsole(ErrorLevel, "", message)
+	l.logToFile(ErrorLevel, "", message)
 }
 
 func (l *Logger) ErrorT(trace string, v ...interface{}) {
 	message := fmt.Sprint(v...)
-	l.logToConsole(zapcore.ErrorLevel, trace, message)
-	l.logToFile(zapcore.ErrorLevel, trace, message)
+	l.logToConsole(ErrorLevel, trace, message)
+	l.logToFile(ErrorLevel, trace, message)
 }
 
 func (l *Logger) Fatal(v ...interface{}) {
 	message := fmt.Sprint(v...)
-	l.logToConsole(zapcore.FatalLevel, "", message)
-	l.logToFile(zapcore.FatalLevel, "", message)
+	l.logToConsole(FatalLevel, "", message)
+	l.logToFile(FatalLevel, "", message)
 }
 
 func (l *Logger) FatalT(trace string, v ...interface{}) {
 	message := fmt.Sprint(v...)
-	l.logToConsole(zapcore.FatalLevel, trace, message)
-	l.logToFile(zapcore.FatalLevel, trace, message)
+	l.logToConsole(FatalLevel, trace, message)
+	l.logToFile(FatalLevel, trace, message)
 }
 
 func (l *Logger) Panic(v ...interface{}) {
 	message := fmt.Sprint(v...)
-	l.logToConsole(zapcore.PanicLevel, "", message)
-	l.logToFile(zapcore.PanicLevel, "", message)
+	l.logToConsole(PanicLevel, "", message)
+	l.logToFile(PanicLevel, "", message)
 }
 
 func (l *Logger) PanicT(trace string, v ...interface{}) {
 	message := fmt.Sprint(v...)
-	l.logToConsole(zapcore.PanicLevel, trace, message)
-	l.logToFile(zapcore.PanicLevel, trace, message)
+	l.logToConsole(PanicLevel, trace, message)
+	l.logToFile(PanicLevel, trace, message)
+}
+
+func (l *Logger) SetConsoleLogger(logger *log.Logger) {
+	l.consoleLogger = logger
+}
+
+func (l *Logger) SetFileLogger(logger *zap.Logger) {
+	l.fileLogger = logger
 }
 
 func NewLoggerWithMode(mode Mode) *Logger {
@@ -187,14 +214,14 @@ func setupDefaultConfig(mode Mode) *LoggerConfig {
 
 	switch mode {
 	case DevMode:
-		consoleLevel = zapcore.DebugLevel
-		fileLevel = zapcore.DebugLevel
+		consoleLevel = DebugLevel
+		fileLevel = DebugLevel
 	case DebugMode:
-		consoleLevel = zapcore.DebugLevel
-		fileLevel = zapcore.InfoLevel
+		consoleLevel = DebugLevel
+		fileLevel = InfoLevel
 	case ProdMode:
-		consoleLevel = zapcore.InfoLevel
-		fileLevel = zapcore.WarnLevel
+		consoleLevel = InfoLevel
+		fileLevel = WarnLevel
 	}
 
 	return &LoggerConfig{
@@ -216,11 +243,6 @@ func setupDefaultConfig(mode Mode) *LoggerConfig {
 }
 
 func setupConsoleLogger(level Level) *log.Logger {
-	logLevel := log.InfoLevel
-	if level <= zapcore.DebugLevel {
-		logLevel = log.DebugLevel
-	}
-
 	styles := log.DefaultStyles()
 	styles.Message = lipgloss.NewStyle().Foreground(lipgloss.Color("#dedede"))
 	styles.Timestamp = lipgloss.NewStyle().Foreground(lipgloss.Color("#8a8a8a"))
@@ -228,7 +250,7 @@ func setupConsoleLogger(level Level) *log.Logger {
 	logger := log.NewWithOptions(os.Stdout, log.Options{
 		ReportTimestamp: true,
 		TimeFormat:      time.DateTime,
-		Level:           logLevel,
+		Level:           level.toCharmbracelet(),
 	})
 	logger.SetStyles(styles)
 	return logger
@@ -240,6 +262,6 @@ func setupFileLogger(level Level, LJLogger *lumberjack.Logger) *zap.Logger {
 	fileEncoder := zapcore.NewJSONEncoder(pe)
 
 	ioWriter := LJLogger
-	core := zapcore.NewCore(fileEncoder, zapcore.AddSync(ioWriter), level)
+	core := zapcore.NewCore(fileEncoder, zapcore.AddSync(ioWriter), level.toZap())
 	return zap.New(core)
 }
