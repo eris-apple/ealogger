@@ -14,7 +14,6 @@ const (
 	WarnLevel
 	ErrorLevel
 	FatalLevel
-	PanicLevel
 	UnselectedLevel
 )
 
@@ -35,8 +34,6 @@ func (l Level) String() string {
 		return "error"
 	case FatalLevel:
 		return "fatal"
-	case PanicLevel:
-		return "panic"
 	case UnselectedLevel:
 		return "unselected"
 	default:
@@ -56,8 +53,6 @@ func (l Level) toZap() zapcore.Level {
 		return zapcore.ErrorLevel
 	case FatalLevel:
 		return zapcore.FatalLevel
-	case PanicLevel:
-		return zapcore.PanicLevel
 	case UnselectedLevel:
 		return zapcore.InfoLevel
 	default:
@@ -76,8 +71,6 @@ func (l Level) toCharmbracelet() log.Level {
 	case ErrorLevel:
 		return log.ErrorLevel
 	case FatalLevel:
-		return log.FatalLevel
-	case PanicLevel:
 		return log.FatalLevel
 	case UnselectedLevel:
 		return math.MaxInt32

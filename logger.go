@@ -8,6 +8,7 @@ import (
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -20,25 +21,25 @@ const (
 )
 
 type DefaultLogger interface {
-	Print(v ...interface{})
-	Printf(v ...interface{})
-	Info(v ...interface{})
-	Debug(v ...interface{})
-	Warn(v ...interface{})
-	Error(v ...interface{})
-	Fatal(v ...interface{})
-	Panic(v ...interface{})
+	Print(args ...any)
+	Printf(args ...any)
+	Info(args ...any)
+	Debug(args ...any)
+	Warn(args ...any)
+	Error(args ...any)
+	Fatal(args ...any)
 }
 
 type EALogger interface {
 	DefaultLogger
-	InfoT(trace string, v ...interface{})
-	DebugT(trace string, v ...interface{})
-	WarnT(trace string, v ...interface{})
-	ErrorT(trace string, v ...interface{})
-	FatalT(trace string, v ...interface{})
-	PanicT(trace string, v ...interface{})
+	InfoT(trace string, args ...any)
+	DebugT(trace string, args ...any)
+	WarnT(trace string, args ...any)
+	ErrorT(trace string, args ...any)
+	FatalT(trace string, args ...any)
 }
+
+type Field map[string]interface{}
 
 type Logger struct {
 	DefaultLogger
@@ -47,11 +48,24 @@ type Logger struct {
 
 	c *LoggerConfig
 }
-
 type LoggerConfig struct {
 	UseConsole, UseFile     bool
 	ConsoleLevel, FileLevel Level
 	LJLogger                *lumberjack.Logger
+
+	TimestampColor *string
+	MessageColor   *string
+	ErrorColor     *string
+
+	LevelColors map[Level]string
+}
+
+func (l *Logger) SetConsoleLogger(logger *log.Logger) {
+	l.consoleLogger = logger
+}
+
+func (l *Logger) SetFileLogger(logger *zap.Logger) {
+	l.fileLogger = logger
 }
 
 func (l *Logger) logToConsole(level Level, trace string, msg string) {
@@ -61,8 +75,18 @@ func (l *Logger) logToConsole(level Level, trace string, msg string) {
 
 	if l.c.ConsoleLevel.IsEnabled(level) {
 		if trace != "" {
-			trace = fmt.Sprintf("%s%s%s: ", Cyan, trace, Reset)
+			trace = lipgloss.
+				NewStyle().
+				SetString(fmt.Sprintf("[%s]: ", trace)).
+				Foreground(lipgloss.Color(l.c.LevelColors[level])).
+				String()
 		}
+
+		msg = lipgloss.
+			NewStyle().
+			SetString(fmt.Sprintf("%s", msg)).
+			Foreground(lipgloss.Color(*l.c.MessageColor)).
+			String()
 
 		switch level.String() {
 		case DebugLevel.String():
@@ -74,8 +98,6 @@ func (l *Logger) logToConsole(level Level, trace string, msg string) {
 		case ErrorLevel.String():
 			l.consoleLogger.Error(trace + msg)
 		case FatalLevel.String():
-			l.consoleLogger.Fatal(trace + msg)
-		case PanicLevel.String():
 			l.consoleLogger.Fatal(trace + msg)
 		case UnselectedLevel.String():
 			l.consoleLogger.Print(trace + msg)
@@ -106,8 +128,6 @@ func (l *Logger) logToFile(level Level, trace string, msg string) {
 			l.fileLogger.Error(trace + msg)
 		case FatalLevel.String():
 			l.fileLogger.Fatal(trace + msg)
-		case PanicLevel.String():
-			l.fileLogger.Panic(trace + msg)
 		case UnselectedLevel.String():
 			l.fileLogger.Info(trace + msg)
 		default:
@@ -116,96 +136,108 @@ func (l *Logger) logToFile(level Level, trace string, msg string) {
 	}
 }
 
-func (l *Logger) Print(v ...interface{}) {
-	message := fmt.Sprint(v...)
-	l.logToConsole(UnselectedLevel, "", message)
-	l.logToFile(UnselectedLevel, "", message)
+func (l *Logger) Log(level Level, trace string, args ...any) {
+	message := fmt.Sprint(args...)
+	l.logToConsole(level, trace, message)
+	l.logToFile(level, trace, message)
 }
 
-func (l *Logger) Printf(format string, v ...interface{}) {
-	message := fmt.Sprintf(format, v...)
-	l.logToConsole(UnselectedLevel, "", message)
-	l.logToFile(UnselectedLevel, "", message)
+func (l *Logger) Logf(level Level, format string, args ...any) {
+	message := fmt.Sprintf(format, args...)
+	l.logToConsole(level, "", message)
+	l.logToFile(level, "", message)
 }
 
-func (l *Logger) Info(v ...interface{}) {
-	message := fmt.Sprint(v...)
-	l.logToConsole(InfoLevel, "", message)
-	l.logToFile(InfoLevel, "", message)
+func (l *Logger) WithFields(fields Field) *Entry {
+	entry := NewEntry(l)
+	entry.WithFields(fields)
+	return entry
 }
 
-func (l *Logger) InfoT(trace string, v ...interface{}) {
-	message := fmt.Sprint(v...)
-	l.logToConsole(InfoLevel, trace, message)
-	l.logToFile(InfoLevel, trace, message)
+func (l *Logger) WithField(key string, value interface{}) *Entry {
+	entry := NewEntry(l)
+	entry.WithField(Field{key: value})
+	return entry
 }
 
-func (l *Logger) Debug(v ...interface{}) {
-	message := fmt.Sprint(v...)
-	l.logToConsole(DebugLevel, "", message)
-	l.logToFile(DebugLevel, "", message)
+func (l *Logger) WithTrace(trace string) *Entry {
+	entry := NewEntry(l)
+	entry.WithTrace(trace)
+	return entry
 }
 
-func (l *Logger) DebugT(trace string, v ...interface{}) {
-	message := fmt.Sprint(v...)
-	l.logToConsole(DebugLevel, trace, message)
-	l.logToFile(DebugLevel, trace, message)
+func (l *Logger) WithError(err error) *Entry {
+	entry := NewEntry(l)
+	entry.WithError(err)
+	return entry
 }
 
-func (l *Logger) Warn(v ...interface{}) {
-	message := fmt.Sprint(v...)
-	l.logToConsole(WarnLevel, "", message)
-	l.logToFile(WarnLevel, "", message)
+func (l *Logger) Print(args ...any) {
+	l.Log(UnselectedLevel, "", args...)
 }
 
-func (l *Logger) WarnT(trace string, v ...interface{}) {
-	message := fmt.Sprint(v...)
-	l.logToConsole(WarnLevel, trace, message)
-	l.logToFile(WarnLevel, trace, message)
+func (l *Logger) Printf(format string, args ...any) {
+	l.Logf(UnselectedLevel, format, args...)
 }
 
-func (l *Logger) Error(v ...interface{}) {
-	message := fmt.Sprint(v...)
-	l.logToConsole(ErrorLevel, "", message)
-	l.logToFile(ErrorLevel, "", message)
+func (l *Logger) Info(args ...any) {
+	l.Log(InfoLevel, "", args...)
 }
 
-func (l *Logger) ErrorT(trace string, v ...interface{}) {
-	message := fmt.Sprint(v...)
-	l.logToConsole(ErrorLevel, trace, message)
-	l.logToFile(ErrorLevel, trace, message)
+func (l *Logger) InfoT(trace string, args ...any) {
+	l.Log(InfoLevel, trace, args...)
 }
 
-func (l *Logger) Fatal(v ...interface{}) {
-	message := fmt.Sprint(v...)
-	l.logToConsole(FatalLevel, "", message)
-	l.logToFile(FatalLevel, "", message)
+func (l *Logger) Infof(format string, args ...any) {
+	l.Logf(InfoLevel, format, args...)
 }
 
-func (l *Logger) FatalT(trace string, v ...interface{}) {
-	message := fmt.Sprint(v...)
-	l.logToConsole(FatalLevel, trace, message)
-	l.logToFile(FatalLevel, trace, message)
+func (l *Logger) Debug(args ...any) {
+	l.Log(DebugLevel, "", args...)
 }
 
-func (l *Logger) Panic(v ...interface{}) {
-	message := fmt.Sprint(v...)
-	l.logToConsole(PanicLevel, "", message)
-	l.logToFile(PanicLevel, "", message)
+func (l *Logger) DebugT(trace string, args ...any) {
+	l.Log(DebugLevel, trace, args...)
 }
 
-func (l *Logger) PanicT(trace string, v ...interface{}) {
-	message := fmt.Sprint(v...)
-	l.logToConsole(PanicLevel, trace, message)
-	l.logToFile(PanicLevel, trace, message)
+func (l *Logger) Debugf(format string, args ...any) {
+	l.Logf(DebugLevel, format, args...)
 }
 
-func (l *Logger) SetConsoleLogger(logger *log.Logger) {
-	l.consoleLogger = logger
+func (l *Logger) Warn(args ...any) {
+	l.Log(WarnLevel, "", args...)
 }
 
-func (l *Logger) SetFileLogger(logger *zap.Logger) {
-	l.fileLogger = logger
+func (l *Logger) WarnT(trace string, args ...any) {
+	l.Log(WarnLevel, trace, args...)
+}
+
+func (l *Logger) Warnf(format string, args ...any) {
+	l.Logf(WarnLevel, format, args...)
+}
+
+func (l *Logger) Error(args ...any) {
+	l.Log(ErrorLevel, "", args...)
+}
+
+func (l *Logger) ErrorT(trace string, args ...any) {
+	l.Log(ErrorLevel, trace, args...)
+}
+
+func (l *Logger) Errorf(format string, args ...any) {
+	l.Logf(ErrorLevel, format, args...)
+}
+
+func (l *Logger) Fatal(args ...any) {
+	l.Log(FatalLevel, "", args...)
+}
+
+func (l *Logger) FatalT(trace string, args ...any) {
+	l.Log(FatalLevel, trace, args...)
+}
+
+func (l *Logger) Fatalf(format string, args ...any) {
+	l.Logf(FatalLevel, format, args...)
 }
 
 func NewLoggerWithMode(mode Mode) *Logger {
@@ -217,7 +249,8 @@ func NewLogger(lc *LoggerConfig) *Logger {
 		lc = setupDefaultConfig(DevMode)
 	}
 
-	consoleLogger := setupConsoleLogger(lc.ConsoleLevel)
+	setupDefaultLoggerColors(lc)
+	consoleLogger := setupConsoleLogger(lc.ConsoleLevel, lc)
 	fileLogger := setupFileLogger(lc.FileLevel, lc.LJLogger)
 
 	return &Logger{
@@ -242,7 +275,7 @@ func setupDefaultConfig(mode Mode) *LoggerConfig {
 		fileLevel = WarnLevel
 	}
 
-	return &LoggerConfig{
+	lc := &LoggerConfig{
 		ConsoleLevel: consoleLevel,
 		FileLevel:    fileLevel,
 
@@ -258,12 +291,59 @@ func setupDefaultConfig(mode Mode) *LoggerConfig {
 			Compress:   false,
 		},
 	}
+
+	setupDefaultLoggerColors(lc)
+	return lc
 }
 
-func setupConsoleLogger(level Level) *log.Logger {
+func setupDefaultLoggerColors(lc *LoggerConfig) {
+	timestampColor := "#8a8a8a"
+	messageColor := "#e3e3e3"
+	errorColor := "#af0000"
+
+	if lc.TimestampColor == nil {
+		lc.TimestampColor = &timestampColor
+	}
+	if lc.MessageColor == nil {
+		lc.MessageColor = &messageColor
+	}
+	if lc.ErrorColor == nil {
+		lc.ErrorColor = &errorColor
+	}
+
+	if lc.LevelColors == nil {
+		lc.LevelColors = make(map[Level]string)
+	}
+
+	if lc.LevelColors[InfoLevel] == "" {
+		lc.LevelColors[InfoLevel] = "#afd7ff"
+	}
+
+	if lc.LevelColors[DebugLevel] == "" {
+		lc.LevelColors[DebugLevel] = "#969696"
+	}
+
+	if lc.LevelColors[WarnLevel] == "" {
+		lc.LevelColors[WarnLevel] = "#ffff18"
+	}
+
+	if lc.LevelColors[ErrorLevel] == "" {
+		lc.LevelColors[ErrorLevel] = "#af0000"
+	}
+
+	if lc.LevelColors[FatalLevel] == "" {
+		lc.LevelColors[FatalLevel] = "#ff0000"
+	}
+
+}
+
+func setupConsoleLogger(level Level, lc *LoggerConfig) *log.Logger {
 	styles := log.DefaultStyles()
-	styles.Message = lipgloss.NewStyle().Foreground(lipgloss.Color("#dedede"))
-	styles.Timestamp = lipgloss.NewStyle().Foreground(lipgloss.Color("#8a8a8a"))
+	styles.Message = lipgloss.NewStyle().Foreground(lipgloss.Color(*lc.MessageColor))
+	styles.Timestamp = lipgloss.NewStyle().Foreground(lipgloss.Color(*lc.TimestampColor))
+	for key, value := range lc.LevelColors {
+		styles.Levels[key.toCharmbracelet()] = lipgloss.NewStyle().SetString(strings.ToUpper(key.String())).Foreground(lipgloss.Color(value))
+	}
 
 	logger := log.NewWithOptions(os.Stdout, log.Options{
 		ReportTimestamp: true,
