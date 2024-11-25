@@ -46,9 +46,7 @@ func (e *Entry) WithError(err error) *Entry {
 	return e
 }
 
-func (e *Entry) Log(level Level, trace string, args ...any) {
-	message := fmt.Sprint(args...)
-
+func (e *Entry) format(level Level, message string) string {
 	if e.err != nil {
 		errf := lipgloss.
 			NewStyle().
@@ -79,11 +77,19 @@ func (e *Entry) Log(level Level, trace string, args ...any) {
 		}()
 	}
 
+	return message
+}
+
+func (e *Entry) Log(level Level, trace string, args ...any) {
+	message := fmt.Sprint(args...)
+	message = e.format(level, message)
+
 	e.l.Log(level, trace, message)
 }
 
 func (e *Entry) Logf(level Level, trace string, format string, args ...any) {
 	message := fmt.Sprintf(format, args...)
+	message = e.format(level, message)
 
 	e.l.logToConsole(level, trace, message)
 	e.l.logToFile(level, trace, message)
