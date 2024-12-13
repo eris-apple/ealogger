@@ -26,15 +26,15 @@ type DefaultLogger interface {
 
 type EALogger interface {
 	DefaultLogger
-	InfoN(traceName string, args ...any)
+	Infon(traceName string, args ...any)
 	Infof(traceName string, args ...any)
-	DebugN(traceName string, args ...any)
+	Debugn(traceName string, args ...any)
 	Debugf(traceName string, args ...any)
-	WarnN(traceName string, args ...any)
+	Warnn(traceName string, args ...any)
 	Warnf(traceName string, args ...any)
-	ErrorN(traceName string, args ...any)
+	Errorn(traceName string, args ...any)
 	Errorf(traceName string, args ...any)
-	FatalN(traceName string, args ...any)
+	Fataln(traceName string, args ...any)
 	Fatalf(traceName string, args ...any)
 }
 
@@ -85,7 +85,7 @@ func (l *Logger) Info(args ...any) {
 	l.Log(shared.NewDefaultLog(shared.InfoLevel, args...))
 }
 
-func (l *Logger) InfoN(traceName string, args ...any) {
+func (l *Logger) Infon(traceName string, args ...any) {
 	l.Log(shared.NewDefaultLogn(shared.InfoLevel, traceName, args...))
 }
 
@@ -97,7 +97,7 @@ func (l *Logger) Debug(args ...any) {
 	l.Log(shared.NewDefaultLog(shared.DebugLevel, args...))
 }
 
-func (l *Logger) DebugN(traceName string, args ...any) {
+func (l *Logger) Debugn(traceName string, args ...any) {
 	l.Log(shared.NewDefaultLogn(shared.DebugLevel, traceName, args...))
 }
 
@@ -115,7 +115,7 @@ func (e *Logger) DebugJSON(data interface{}) {
 	e.Log(shared.NewDefaultLog(shared.DebugLevel, string(jsonData)))
 }
 
-func (e *Logger) DebugTJSON(traceName string, data interface{}) {
+func (e *Logger) DebugnJSON(traceName string, data interface{}) {
 	jsonData, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		e.Log(shared.NewDefaultLogn(shared.DebugLevel, traceName, "error with marshaling struct"))
@@ -129,7 +129,7 @@ func (l *Logger) Warn(args ...any) {
 	l.Log(shared.NewDefaultLog(shared.WarnLevel, args...))
 }
 
-func (l *Logger) WarnN(traceName string, args ...any) {
+func (l *Logger) Warnn(traceName string, args ...any) {
 	l.Log(shared.NewDefaultLogn(shared.WarnLevel, traceName, args...))
 }
 
@@ -141,7 +141,7 @@ func (l *Logger) Error(args ...any) {
 	l.Log(shared.NewDefaultLog(shared.ErrorLevel, args...))
 }
 
-func (l *Logger) ErrorN(traceName string, args ...any) {
+func (l *Logger) Errorn(traceName string, args ...any) {
 	l.Log(shared.NewDefaultLogn(shared.ErrorLevel, traceName, args...))
 }
 
@@ -153,7 +153,7 @@ func (l *Logger) Fatal(args ...any) {
 	l.Log(shared.NewDefaultLog(shared.FatalLevel, args...))
 }
 
-func (l *Logger) FatalN(traceName string, args ...any) {
+func (l *Logger) Fataln(traceName string, args ...any) {
 	l.Log(shared.NewDefaultLogn(shared.FatalLevel, traceName, args...))
 }
 
