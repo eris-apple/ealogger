@@ -1,4 +1,4 @@
-package ealogger
+package shared
 
 import (
 	"github.com/charmbracelet/log"
@@ -41,7 +41,7 @@ func (l Level) String() string {
 	}
 }
 
-func (l Level) toZap() zapcore.Level {
+func (l Level) ToZap() zapcore.Level {
 	switch l {
 	case DebugLevel:
 		return zapcore.DebugLevel
@@ -60,7 +60,7 @@ func (l Level) toZap() zapcore.Level {
 	}
 }
 
-func (l Level) toCharmbracelet() log.Level {
+func (l Level) ToCharmbracelet() log.Level {
 	switch l {
 	case DebugLevel:
 		return log.DebugLevel
@@ -76,5 +76,24 @@ func (l Level) toCharmbracelet() log.Level {
 		return math.MaxInt32
 	default:
 		return log.InfoLevel
+	}
+}
+
+func (l Level) ToGraylog() int32 {
+	switch l {
+	case DebugLevel:
+		return int32(7)
+	case InfoLevel:
+		return int32(6)
+	case WarnLevel:
+		return int32(4)
+	case ErrorLevel:
+		return int32(3)
+	case FatalLevel:
+		return int32(0)
+	case UnselectedLevel:
+		return int32(6)
+	default:
+		return int32(6)
 	}
 }
